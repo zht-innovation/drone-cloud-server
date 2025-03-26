@@ -11,7 +11,7 @@ import (
 func frontendTransfer(w http.ResponseWriter, r *http.Request) {
 	conn, err := Upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Fatalf("Websocket conn build error: %v", err)
+		log.Printf("Websocket conn build error: %v", err)
 	}
 
 	defer conn.Close()
@@ -22,7 +22,7 @@ func frontendTransfer(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		if err := redisClient.SubChannel(ctx, "tmp", msgChan); err != nil {
-			log.Fatalf("Error subscribing to channel: %v", err)
+			log.Printf("Error subscribing to channel: %v", err)
 		}
 	}()
 
@@ -30,7 +30,7 @@ func frontendTransfer(w http.ResponseWriter, r *http.Request) {
 		data := <-msgChan
 		err := conn.WriteMessage(ws.TextMessage, []byte(data))
 		if err != nil {
-			log.Fatalf("Write msg to web: %v", err)
+			log.Printf("Write msg to web: %v", err)
 		}
 	}
 }

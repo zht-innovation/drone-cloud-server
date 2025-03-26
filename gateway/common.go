@@ -2,8 +2,17 @@ package gateway
 
 import (
 	"context"
+	"encoding/json"
+	"io"
+	"log"
+
+	rsp "zhtcloud/pkg/response"
 
 	ws "github.com/gorilla/websocket"
+)
+
+const (
+	COORS = "coors"
 )
 
 // 飞行模式
@@ -49,6 +58,13 @@ const (
 	MAX_STATE_POWEROFF
 	MAX_STATE_FLIGHT_TERMINATION
 )
+
+// Result 响应基本结构体
+type Result struct {
+	Code int16        `json:"code"`
+	Msg  string       `json:"msg"`
+	Data *interface{} `json:"data,omitempty"`
+}
 
 // 无人机坐标定位
 type GlobalPosition struct {
@@ -96,6 +112,46 @@ type DroneData struct {
 	SYS_STATUS          *SysStatus      `json:"SYS_STATUS"`
 	MODE                uint8           `json:"MODE"`
 	STATUS              uint8           `json:"STATUS"`
+}
+
+// Coordinate 坐标点
+type Coordinate [2]float64
+
+// Coordinates 起始坐标和终点坐标
+type Coordinates struct {
+	Coords [2]Coordinate `json:"coords"`
+}
+
+// HandleErrorReqMethod 处理错误的请求方法
+func HandleErrorReqMethod(rs *Result) {
+	rs.Code = rsp.INVALID_PARAMS
+	rs.Msg = rsp.CodeToMsgMap[rsp.INVALID_PARAMS]
+}
+
+// HandleReqBodyDecode 处理解析请求体，如果返回true，则说明需要调用函数直接return
+func HandleReqBodyDecode(r io.ReadCloser, v any, rs *Result) bool {
+	err := json.NewDecoder(r).Decode(v)
+	if err != nil {
+		_ = r.Close()
+		log.Printf("request decode error: %v", err)
+		rs.Code = rsp.INVALID_PARAMS
+		rs.Msg = rsp.CodeToMsgMap[rsp.INVALID_PARAMS]
+		return true
+	}
+	return false
+}
+
+// HandleResBodyEncode 处理编码响应体
+func HandleResBodyEncode(w io.Writer, rs *Result) {
+	err := json.NewEncoder(w).Encode(rs)
+	if err != nil {
+		log.Printf("JSON encode error: %v", err)
+		rs.Code = rsp.SERVER_ERROR
+		rs.Msg = rsp.CodeToMsgMap[rsp.SERVER_ERROR]
+		if rs.Data != nil {
+			rs.Data = nil
+		}
+	}
 }
 
 var Upgrader = ws.Upgrader{}

@@ -1,6 +1,6 @@
 database:
   dev:
-    host: 81.70.240.201
+    host: 110.42.101.86
     port: 3306
     username: root
     password: asd1234567@
