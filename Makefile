@@ -12,7 +12,7 @@ run:
 
 start:
 	@printf '$(TITLE)Building now...$(RESET)\n'
-	@go mod tidy & go build -o zhtcloud .
+	@go mod tidy & go build -ldflags '-s -w' -o zhtcloud .
 	@nohup ./zhtcloud > run.log 2>&1 &
 	@printf '$(SUCCESS)Build and start successfully!\n$(RESET)'
 
@@ -20,3 +20,6 @@ stop:
 	@pkill zhtcloud
 	@rm -f run.log
 	@printf '$(SUCCESS)Clean successfully!\n$(RESET)'
+
+restart: stop start
+	@printf '$(SUCCESS)Restart completed!\n$(RESET)'

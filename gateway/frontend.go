@@ -1,36 +1,78 @@
 package gateway
 
 import (
-	"log"
+	"context"
 	"net/http"
+	"sync"
 	"zhtcloud/utils"
+	"zhtcloud/utils/logger"
 
 	ws "github.com/gorilla/websocket"
 )
 
+var mu sync.Mutex
+
+func runSendRunningStatus(ctx context.Context, c chan string, conn *ws.Conn) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			status := <-c
+			mu.Lock()
+			err := conn.WriteMessage(ws.TextMessage, []byte(status))
+			mu.Unlock()
+			if err != nil {
+				if ws.IsUnexpectedCloseError(err, ws.CloseGoingAway, ws.CloseNormalClosure) {
+					logger.Error("Write msg to web: %v", err)
+				} else {
+					return
+				}
+			}
+		}
+	}
+}
+
 func frontendTransfer(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(ctx)
 	conn, err := Upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("Websocket conn build error: %v", err)
+		logger.Error("Websocket conn build error: %v", err)
 	}
 
 	defer conn.Close()
+	defer cancel()
 
 	redisClient := utils.GetRedisConn(ctx)
 
-	msgChan := make(chan string)
+	droneInfoChan := make(chan string)
+	runningStatusChan := make(chan string)
 
 	go func() {
-		if err := redisClient.SubChannel(ctx, "tmp", msgChan); err != nil {
-			log.Printf("Error subscribing to channel: %v", err)
+		if err := redisClient.SubChannel(ctx, "drone_info", droneInfoChan); err != nil {
+			logger.Error("Error subscribing to channel: %v", err)
 		}
 	}()
 
+	go func() {
+		if err := redisClient.SubChannel(ctx, "running_status", runningStatusChan); err != nil {
+			logger.Error("Error subscribing to channel: %v", err)
+		}
+	}()
+
+	go runSendRunningStatus(ctx, runningStatusChan, conn)
+
 	for {
-		data := <-msgChan
+		data := <-droneInfoChan
+		mu.Lock()
 		err := conn.WriteMessage(ws.TextMessage, []byte(data))
+		mu.Unlock()
 		if err != nil {
-			log.Printf("Write msg to web: %v", err)
+			if ws.IsUnexpectedCloseError(err, ws.CloseGoingAway, ws.CloseNormalClosure) {
+				logger.Error("Write msg to web: %v", err)
+			} else {
+				return
+			}
 		}
 	}
 }

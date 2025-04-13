@@ -1,11 +1,12 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"zhtcloud/utils"
+	"zhtcloud/utils/logger"
 
 	ws "github.com/gorilla/websocket"
 )
@@ -14,7 +15,7 @@ func droneDataHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(ctx)
 	conn, err := Upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("Websocket conn build error: %v", err)
+		logger.Error("Websocket conn build error: %v", err)
 	}
 
 	defer conn.Close()
@@ -27,7 +28,7 @@ func droneDataHandler(w http.ResponseWriter, r *http.Request) {
 	// listen coordinates transfer
 	go func() {
 		if err := redisClient.SubChannel(ctx, COORS, msgChan); err != nil {
-			log.Printf("Error subscribing to 'coords' channel: %v", err)
+			logger.Error("Error subscribing to 'coords' channel: %v", err)
 		}
 	}()
 
@@ -40,7 +41,11 @@ func droneDataHandler(w http.ResponseWriter, r *http.Request) {
 				coors := <-msgChan
 				err := conn.WriteMessage(ws.TextMessage, []byte(coors))
 				if err != nil {
-					log.Printf("Send coordinates to drones: %v", err)
+					if ws.IsUnexpectedCloseError(err, ws.CloseGoingAway, ws.CloseNormalClosure) {
+						logger.Error("Send coordinates to drones: %v", err)
+					} else {
+						return
+					}
 				}
 			}
 		}
@@ -49,15 +54,33 @@ func droneDataHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		messageType, p, err := conn.ReadMessage()
 		if err != nil {
-			log.Printf("Websocket read data error: %v", err)
+			if ws.IsUnexpectedCloseError(err, ws.CloseGoingAway, ws.CloseAbnormalClosure,
+				ws.CloseNormalClosure, ws.CloseNoStatusReceived) { // NoStatusReceived: websocket 1005
+				logger.Error("Websocket read data: %v", err)
+			} else {
+				return
+			}
 		}
 
 		if messageType == 1 { // Byte stream
-			var droneData DroneData
-			if err := json.Unmarshal(p, &droneData); err != nil {
-				log.Printf("Json unmarshal data error: %v", err)
+			decoder := json.NewDecoder(bytes.NewReader(p))
+
+			var data map[string]interface{}
+			if err := decoder.Decode(&data); err != nil {
+				logger.Fatal("JSON decode error: %v", err)
 			}
-			redisClient.PubChannel(ctx, "tmp", string(p))
+
+			typ := uint8(data["TYPE"].(float64)) // from interface{} default float64
+			var chanName string
+
+			switch typ {
+			case DRONE_INFO:
+				chanName = "drone_info"
+			case RUNNING_STATUS:
+				chanName = "running_status"
+			}
+
+			redisClient.PubChannel(ctx, chanName, string(p))
 		}
 	}
 }

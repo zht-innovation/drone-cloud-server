@@ -4,15 +4,28 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
+	"net/http"
 
 	rsp "zhtcloud/pkg/response"
+	"zhtcloud/utils/logger"
 
 	ws "github.com/gorilla/websocket"
 )
 
 const (
 	COORS = "coors"
+)
+
+const (
+	DRONE_INFO = iota
+	RUNNING_STATUS
+)
+
+/* running_status */
+const (
+	PICKING   = iota // Now picking up the goods
+	PICKED           // Have picked the goods
+	DELIVERED        // Have delivered done
 )
 
 // 飞行模式
@@ -44,6 +57,7 @@ const (
 	SYSTEMID
 	AUTOROTATE
 	AUTO_RTL
+	MANUAL
 )
 
 // 飞行状态
@@ -112,6 +126,12 @@ type DroneData struct {
 	SYS_STATUS          *SysStatus      `json:"SYS_STATUS"`
 	MODE                uint8           `json:"MODE"`
 	STATUS              uint8           `json:"STATUS"`
+	TYPE                uint8           `json:"TYPE"`
+}
+
+type RunningStatus struct {
+	TYPE           uint8 `json:"TYPE"`
+	RUNNING_STATUS uint8 `json:"RUNNING_STATUS"`
 }
 
 // Coordinate 坐标点
@@ -119,7 +139,7 @@ type Coordinate [2]float64
 
 // Coordinates 起始坐标和终点坐标
 type Coordinates struct {
-	Coords [2]Coordinate `json:"coords"`
+	Coords []Coordinate `json:"coords"`
 }
 
 // HandleErrorReqMethod 处理错误的请求方法
@@ -133,7 +153,7 @@ func HandleReqBodyDecode(r io.ReadCloser, v any, rs *Result) bool {
 	err := json.NewDecoder(r).Decode(v)
 	if err != nil {
 		_ = r.Close()
-		log.Printf("request decode error: %v", err)
+		logger.Error("request decode error: %v", err)
 		rs.Code = rsp.INVALID_PARAMS
 		rs.Msg = rsp.CodeToMsgMap[rsp.INVALID_PARAMS]
 		return true
@@ -145,7 +165,7 @@ func HandleReqBodyDecode(r io.ReadCloser, v any, rs *Result) bool {
 func HandleResBodyEncode(w io.Writer, rs *Result) {
 	err := json.NewEncoder(w).Encode(rs)
 	if err != nil {
-		log.Printf("JSON encode error: %v", err)
+		logger.Error("JSON encode error: %v", err)
 		rs.Code = rsp.SERVER_ERROR
 		rs.Msg = rsp.CodeToMsgMap[rsp.SERVER_ERROR]
 		if rs.Data != nil {
@@ -154,5 +174,9 @@ func HandleResBodyEncode(w io.Writer, rs *Result) {
 	}
 }
 
-var Upgrader = ws.Upgrader{}
+var Upgrader = ws.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 var ctx = context.Background()
