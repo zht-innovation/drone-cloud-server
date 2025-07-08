@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"testing"
 	"time"
 	rsp "zhtcloud/pkg/response"
+	"zhtcloud/utils/logger"
 
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/ssh"
@@ -26,37 +26,37 @@ func genMqttToken(mac string) (string, error) {
 	return token.SignedString(secret)
 }
 
-func checkValidDevice(secret string, t *testing.T) (string, bool) {
+func checkValidDevice(secret string) (string, bool) {
 	privateKeyPath := "/home/zht/.ssh/id_rsa"
 	privateKeyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
-		t.Errorf("Failed to read private key file: %v", err)
+		logger.Error("Failed to read private key file: %v", err)
 		return "", false
 	}
 
 	privateKey, err := ssh.ParseRawPrivateKey(privateKeyBytes)
 	if err != nil {
-		t.Errorf("Failed to parse private key: %v", err)
+		logger.Error("Failed to parse private key: %v", err)
 		return "", false
 	}
 
 	// Base64解码secret参数
 	encryptedData, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
-		t.Errorf("Failed to decode base64 secret: %v", err)
+		logger.Error("Failed to decode base64 secret: %v", err)
 		return "", false
 	}
 
 	// 用私钥解密
 	decryptedData, err := rsa.DecryptPKCS1v15(rand.Reader, privateKey.(*rsa.PrivateKey), encryptedData)
 	if err != nil {
-		t.Errorf("Failed to decrypt data: %v", err)
+		logger.Error("Failed to decrypt data: %v", err)
 		return "", false
 	}
 
 	secretList := strings.Split(string(decryptedData), "|")
 	if secretList[0] != os.Getenv("SECRET") {
-		t.Logf("Invalid secret prefix: %s", secretList[0])
+		logger.Error("Invalid secret prefix: %s", secretList[0])
 		return "", false
 	}
 
