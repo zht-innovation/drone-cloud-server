@@ -7,6 +7,7 @@ import (
 	"zhtcloud/utils"
 )
 
+// sendCoordinates handles the HTTP request to send waypoint coordinates to drones
 func sendCoordinates(w http.ResponseWriter, r *http.Request) {
 	rs := Result{}
 

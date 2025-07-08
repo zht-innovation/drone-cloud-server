@@ -1,3 +1,4 @@
+// Read message from drones and send them to Redis
 package gateway
 
 import (

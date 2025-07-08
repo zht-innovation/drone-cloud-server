@@ -28,7 +28,7 @@ const (
 	DELIVERED        // Have delivered done
 )
 
-// 飞行模式
+// drone flying type
 const (
 	STABLIZE = iota
 	ACRO
@@ -60,7 +60,7 @@ const (
 	MANUAL
 )
 
-// 飞行状态
+// drone flying state
 const (
 	MAV_STATE_UNINIT = iota
 	MAV_STATE_BOOT
@@ -73,14 +73,14 @@ const (
 	MAX_STATE_FLIGHT_TERMINATION
 )
 
-// Result 响应基本结构体
+// Result is the standard response structure
 type Result struct {
 	Code int16        `json:"code"`
 	Msg  string       `json:"msg"`
 	Data *interface{} `json:"data,omitempty"`
 }
 
-// 无人机坐标定位
+// This structure is used to represent the global position of a drone
 type GlobalPosition struct {
 	TimeBootMs  uint32 `json:"time_boot_ms"`
 	Lat         int32  `json:"lat"`
@@ -93,7 +93,7 @@ type GlobalPosition struct {
 	Hdg         uint16 `json:"hdg"`
 }
 
-// 无人机旋转或俯仰角度
+// drone attitude information
 type Attitude struct {
 	Roll       float64 `json:"roll"`
 	Pitch      float64 `json:"pitch"`
@@ -103,7 +103,7 @@ type Attitude struct {
 	YawSpeed   float64 `json:"yawspeed"`
 }
 
-// 系统状态信息
+// system status information
 type SysStatus struct {
 	OnboardControlSensorsPresent uint32 `json:"onboard_control_sensors_present"`
 	OnboardControlSensorsEnabled uint32 `json:"onboard_control_sensors_enabled"`
@@ -120,35 +120,45 @@ type SysStatus struct {
 	ErrorsCount4                 uint16 `json:"errors_count4"`
 }
 
+// Motor information
+type Motor struct {
+	Current     uint16 `json:"current"`
+	Voltage     uint16 `json:"voltage"`
+	Speed       uint16 `json:"speed"`
+	Temperature uint16 `json:"temperature"`
+}
+
 type DroneData struct {
 	GLOBAL_POSITION_INT *GlobalPosition `json:"GLOBAL_POSITION_INT"`
 	ATTITUDE            *Attitude       `json:"ATTITUDE"`
 	SYS_STATUS          *SysStatus      `json:"SYS_STATUS"`
-	MODE                uint8           `json:"MODE"`
-	STATUS              uint8           `json:"STATUS"`
-	TYPE                uint8           `json:"TYPE"`
+	MOTOR               *Motor          `json:"MOTOR"`
+
+	MODE                      uint8 `json:"MODE"`
+	STATUS                    uint8 `json:"STATUS"`
+	TYPE                      uint8 `json:"TYPE"`
+	GPS_NUM                   uint8 `json:"GPS_NUM"`
+	REMOTE_CONTROL_CONNECTION bool  `json:"REMOTE_CONTROL_CONNECTION"`
+	FLIGHT_CONTROLER_UNLOCK   bool  `json:"FLIGHT_CONTROLER_UNLOCK"`
 }
 
-type RunningStatus struct {
-	TYPE           uint8 `json:"TYPE"`
-	RUNNING_STATUS uint8 `json:"RUNNING_STATUS"`
-}
-
-// Coordinate 坐标点
+// Coordinate waypoint
 type Coordinate [2]float64
 
-// Coordinates 起始坐标和终点坐标
+// Coordinates start point and end point
+// Coords[0] is the start point, Coords[1] is the end
 type Coordinates struct {
 	Coords []Coordinate `json:"coords"`
 }
 
-// HandleErrorReqMethod 处理错误的请求方法
+// HandleErrorReqMethod hanles the error when the request method is not supported
 func HandleErrorReqMethod(rs *Result) {
 	rs.Code = rsp.INVALID_PARAMS
 	rs.Msg = rsp.CodeToMsgMap[rsp.INVALID_PARAMS]
 }
 
-// HandleReqBodyDecode 处理解析请求体，如果返回true，则说明需要调用函数直接return
+// HandleReqBodyDecode handles decoding the request body
+// r is the request body, v is the target struct to decode into, rs is the response result
 func HandleReqBodyDecode(r io.ReadCloser, v any, rs *Result) bool {
 	err := json.NewDecoder(r).Decode(v)
 	if err != nil {
@@ -161,7 +171,8 @@ func HandleReqBodyDecode(r io.ReadCloser, v any, rs *Result) bool {
 	return false
 }
 
-// HandleResBodyEncode 处理编码响应体
+// HandleResBodyEncode handles encoding the response body
+// w is the response writer, rs is the response result
 func HandleResBodyEncode(w io.Writer, rs *Result) {
 	err := json.NewEncoder(w).Encode(rs)
 	if err != nil {
