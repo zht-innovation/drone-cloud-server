@@ -129,6 +129,8 @@ type Motor struct {
 }
 
 type DroneData struct {
+	DID string `json:"did"` // Drone ID, mac address of the drone
+
 	GLOBAL_POSITION_INT *GlobalPosition `json:"GLOBAL_POSITION_INT"`
 	ATTITUDE            *Attitude       `json:"ATTITUDE"`
 	SYS_STATUS          *SysStatus      `json:"SYS_STATUS"`
@@ -140,6 +142,11 @@ type DroneData struct {
 	GPS_NUM                   uint8 `json:"GPS_NUM"`
 	REMOTE_CONTROL_CONNECTION bool  `json:"REMOTE_CONTROL_CONNECTION"`
 	FLIGHT_CONTROLER_UNLOCK   bool  `json:"FLIGHT_CONTROLER_UNLOCK"`
+}
+
+type RunningStatus struct {
+	TYPE           uint8 `json:"TYPE"`
+	RUNNING_STATUS uint8 `json:"RUNNING_STATUS"`
 }
 
 // Coordinate waypoint

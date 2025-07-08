@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/aler9/gortsplib/v2 v2.2.2
 	github.com/eclipse/paho.mqtt.golang v1.5.0
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/rtp v0.0.0-20230107162714-c3ea6851e25b
 	github.com/redis/go-redis/v9 v9.7.0
