@@ -7,4 +7,5 @@ const (
 
 	ERROR_MAC_FORMAT = 600 + iota
 	EXCEED_RATE_LIMIE
+	INVALID_DEVICE
 )

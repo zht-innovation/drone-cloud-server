@@ -1,21 +1,66 @@
 package gateway
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/base64"
 	"net/http"
+	"os"
+	"strings"
+	"testing"
+	"time"
 	rsp "zhtcloud/pkg/response"
 
 	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/ssh"
 )
 
-var secret = []byte("zhtaero")
+var secret = []byte(os.Getenv("SECRET"))
 
 func genMqttToken(mac string) (string, error) {
 	claims := jwt.MapClaims{
 		"mac": mac,
-		"exp": jwt.TimeFunc().Add(1 * 60 * 60).Unix(), // 1 hour expiration
+		"exp": jwt.TimeFunc().Add(1 * time.Hour).Unix(), // 1 hour expiration
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(secret)
+}
+
+func checkValidDevice(secret string, t *testing.T) (string, bool) {
+	privateKeyPath := "/home/zht/.ssh/id_rsa"
+	privateKeyBytes, err := os.ReadFile(privateKeyPath)
+	if err != nil {
+		t.Errorf("Failed to read private key file: %v", err)
+		return "", false
+	}
+
+	privateKey, err := ssh.ParseRawPrivateKey(privateKeyBytes)
+	if err != nil {
+		t.Errorf("Failed to parse private key: %v", err)
+		return "", false
+	}
+
+	// Base64解码secret参数
+	encryptedData, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		t.Errorf("Failed to decode base64 secret: %v", err)
+		return "", false
+	}
+
+	// 用私钥解密
+	decryptedData, err := rsa.DecryptPKCS1v15(rand.Reader, privateKey.(*rsa.PrivateKey), encryptedData)
+	if err != nil {
+		t.Errorf("Failed to decrypt data: %v", err)
+		return "", false
+	}
+
+	secretList := strings.Split(string(decryptedData), "|")
+	if secretList[0] != os.Getenv("SECRET") {
+		t.Logf("Invalid secret prefix: %s", secretList[0])
+		return "", false
+	}
+
+	return secretList[1], true
 }
 
 func validateMacFormat(mac string) bool {
@@ -43,10 +88,17 @@ func authDrone(w http.ResponseWriter, r *http.Request) {
 	defer HandleResBodyEncode(w, &rs)
 
 	if r.Method == http.MethodGet {
-		mac := r.URL.Query().Get("mac")
+		secret := r.URL.Query().Get("secret")
+
+		mac, ok := checkValidDevice(secret)
+		if !ok {
+			rs.Code = rsp.INVALID_DEVICE
+			rs.Msg = rsp.CodeToMsgMap[rsp.INVALID_DEVICE]
+			return
+		}
 
 		// validate the MAC address format
-		ok := validateMacFormat(mac)
+		ok = validateMacFormat(mac)
 		if !ok {
 			rs.Code = rsp.ERROR_MAC_FORMAT
 			rs.Msg = rsp.CodeToMsgMap[rsp.ERROR_MAC_FORMAT]
