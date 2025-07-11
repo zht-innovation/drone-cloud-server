@@ -50,7 +50,7 @@ func checkValidDevice(secret string, t *testing.T) (string, bool) {
 }
 
 func TestSecretKey(t *testing.T) {
-	secret := "test|11:22:33:44:55:66"
+	secret := "test|FF-FF-FF-FF-FF-FF"
 
 	// 读取公钥文件
 	publicKeyPath := "/home/zht/.ssh/id_rsa.pub"
@@ -110,8 +110,8 @@ func TestSecretKey(t *testing.T) {
 
 	t.Logf("Decrypted MAC: %s", decryptedSecret)
 
-	if decryptedSecret != "11:22:33:44:55:66" {
-		t.Fatalf("Expected MAC '11:22:33:44:55:66', got '%s'", decryptedSecret)
+	if decryptedSecret != "FF-FF-FF-FF-FF-FF" {
+		t.Fatalf("Expected MAC 'FF-FF-FF-FF-FF-FF', got '%s'", decryptedSecret)
 	}
 
 	t.Log("Secret key encryption/decryption test passed")

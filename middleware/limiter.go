@@ -110,7 +110,7 @@ func (rl *RateLimiter) isAllowed(clientID string) bool {
 // getClientID extracts client identifier from request
 func getClientID(r *http.Request) string {
 	// Priority: X-Real-IP > X-Forwarded-For > RemoteAddr
-	clientIP := r.Header.Get("X-Real-IP")
+	clientIP := r.Header.Get("X-Real-IP") // TODO: IPs of hackers will change dynamically, so it may not be reliable
 	if clientIP == "" {
 		clientIP = r.Header.Get("X-Forwarded-For")
 		if clientIP != "" {

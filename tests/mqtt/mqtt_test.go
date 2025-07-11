@@ -26,7 +26,7 @@ func setupClient(pwd string) mqtt.Client {
 	opts.AddBroker("tcp://localhost:1883")
 	opts.SetClientID("go_mqtt_client")
 	opts.SetUsername(pwd)
-	opts.SetPassword("")
+	opts.SetPassword("testwen")
 	opts.OnConnect = connHandler
 	opts.OnConnectionLost = connLostHandler
 	cli := mqtt.NewClient(opts)
@@ -68,7 +68,7 @@ func publisher(cli mqtt.Client) {
 }
 
 func TestMqtt(t *testing.T) {
-	cli := setupClient("") // 订阅方和发布方使用同一个client
+	cli := setupClient("testwen") // 订阅方和发布方使用同一个client
 
 	go subscriber(cli)
 	time.Sleep(time.Second * 2)

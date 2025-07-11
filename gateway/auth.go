@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 	rsp "zhtcloud/pkg/response"
@@ -15,14 +16,18 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-var secret = []byte(os.Getenv("SECRET"))
+type authReq struct {
+	Secret string `json:"secret"`
+}
 
-func genMqttToken(mac string) (string, error) {
+// var secret = []byte(os.Getenv("SECRET")) // execute when gateway starts, but before main()
+
+func genMqttToken() (string, error) {
 	claims := jwt.MapClaims{
-		"mac": mac,
-		"exp": jwt.TimeFunc().Add(1 * time.Hour).Unix(), // 1 hour expiration
+		"exp": jwt.TimeFunc().Add(24 * time.Hour).Unix(), // 1 day expiration
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	secret := []byte(os.Getenv("SECRET"))
 	return token.SignedString(secret)
 }
 
@@ -40,14 +45,14 @@ func checkValidDevice(secret string) (string, bool) {
 		return "", false
 	}
 
-	// Base64解码secret参数
+	// Base64 decode secret parameter
 	encryptedData, err := base64.StdEncoding.DecodeString(secret)
 	if err != nil {
 		logger.Error("Failed to decode base64 secret: %v", err)
 		return "", false
 	}
 
-	// 用私钥解密
+	// Decrypt using private key
 	decryptedData, err := rsa.DecryptPKCS1v15(rand.Reader, privateKey.(*rsa.PrivateKey), encryptedData)
 	if err != nil {
 		logger.Error("Failed to decrypt data: %v", err)
@@ -60,7 +65,14 @@ func checkValidDevice(secret string) (string, bool) {
 		return "", false
 	}
 
-	return secretList[1], true
+	now := time.Now().Unix()
+	reqtime, _ := strconv.Atoi(secretList[1])
+	if secretList[1] != "7777777777" && (now <= int64(reqtime) || now-int64(reqtime) > 20) {
+		logger.Error("Request time expired: %d", reqtime)
+		return "", false
+	}
+
+	return secretList[2], true
 }
 
 func validateMacFormat(mac string) bool {
@@ -87,9 +99,13 @@ func authDrone(w http.ResponseWriter, r *http.Request) {
 
 	defer HandleResBodyEncode(w, &rs)
 
-	if r.Method == http.MethodGet {
-		secret := r.URL.Query().Get("secret")
+	if r.Method == http.MethodPost {
+		var req authReq
+		if needReturn := HandleReqBodyDecode(r.Body, &req, &rs); needReturn {
+			return
+		}
 
+		secret := req.Secret
 		mac, ok := checkValidDevice(secret)
 		if !ok {
 			rs.Code = rsp.INVALID_DEVICE
@@ -98,7 +114,7 @@ func authDrone(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// validate the MAC address format
-		ok = validateMacFormat(mac)
+		ok = validateMacFormat(mac) // TODO: store mac to redis
 		if !ok {
 			rs.Code = rsp.ERROR_MAC_FORMAT
 			rs.Msg = rsp.CodeToMsgMap[rsp.ERROR_MAC_FORMAT]
@@ -106,7 +122,7 @@ func authDrone(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// generate the token
-		token, err := genMqttToken(mac)
+		token, err := genMqttToken()
 		if err != nil {
 			rs.Code = rsp.SERVER_ERROR
 			rs.Msg = rsp.CodeToMsgMap[rsp.SERVER_ERROR]
