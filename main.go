@@ -3,6 +3,7 @@ package main
 import (
 	"zhtcloud/gateway"
 	"zhtcloud/models"
+	"zhtcloud/utils"
 	"zhtcloud/utils/logger"
 
 	"github.com/joho/godotenv"
@@ -16,6 +17,8 @@ func main() {
 	}
 
 	models.DatabaseSetup()
+
+	go utils.StartTCPListener(":5240")
 	gateway.ServerSetup()
 
 	defer models.Close()

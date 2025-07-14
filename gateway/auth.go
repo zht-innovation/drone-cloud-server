@@ -67,7 +67,7 @@ func checkValidDevice(secret string) (string, bool) {
 
 	now := time.Now().Unix()
 	reqtime, _ := strconv.Atoi(secretList[1])
-	if secretList[1] != "7777777777" && (now <= int64(reqtime) || now-int64(reqtime) > 20) {
+	if secretList[1] != "7777777777" && (now < int64(reqtime) || now-int64(reqtime) > 20) {
 		logger.Error("Request time expired: %d", reqtime)
 		return "", false
 	}

@@ -1,4 +1,4 @@
-// Receive messages from Redis and send them to the frontend via WebSocket
+// v0: Receive messages from Redis and send them to the frontend via WebSocket
 package gateway
 
 import (

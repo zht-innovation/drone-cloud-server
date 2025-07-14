@@ -110,7 +110,7 @@ func main() {
 			if tokenValue, exists := data["token"]; exists {
 				token := tokenValue.(string)
 				cli := _setupClient(token)
-				topic := "drone/data"
+				topic := "testing/pub/data"
 				fmt.Println("Start mocking...")
 				for {
 					// 生成模拟数据
@@ -122,6 +122,7 @@ func main() {
 					vx, vy, vz := 0, 0, 0
 					hdg := 0
 
+					roll := -50.0 + r.Float64()*110
 					pitch := -50.0 + r.Float64()*110
 					yaw := -50 + r.Float64()*100
 
@@ -138,13 +139,13 @@ func main() {
                 	}`, time_boot_ms, lat, lon, alt, relative_alt, vx, vy, vz, hdg)
 
 					ATTITUDE := fmt.Sprintf(`{
-                        "roll": 0,
+                        "roll": %.2f,
                         "pitch": %.2f,
                         "yaw": %.2f,
                         "rollspeed": 0,
                         "pitchspeed": 0,
                         "yawspeed": 0
-                	}`, pitch, yaw)
+                	}`, roll, pitch, yaw)
 
 					SYS_STATUS := `{
                         "onboard_control_sensors_present": 0,
@@ -162,13 +163,24 @@ func main() {
                         "errors_count4": 0
                 	}`
 
+					MOTOR := `{
+						"current": 0,
+						"voltage": 0,
+						"speed": 0,
+						"temperature": 0
+					}`
+
 					payload := fmt.Sprintf(`{
                         "GLOBAL_POSITION_INT": %s,
                         "ATTITUDE": %s,
                         "SYS_STATUS": %s,
+						"MOTOR": %s,
                         "MODE": 0,
-                        "STATUS": 0
-                	}`, GLOBAL_POSITION_INT, ATTITUDE, SYS_STATUS)
+                        "STATUS": 0,
+						"GPS_NUM": 1,
+						"REMOTE_CONTROL_CONNECTION": true,
+						"FLIGHT_CONTROLER_UNLOCK": true
+                	}`, GLOBAL_POSITION_INT, ATTITUDE, SYS_STATUS, MOTOR)
 
 					token := cli.Publish(topic, 1, false, payload)
 					token.Wait()
