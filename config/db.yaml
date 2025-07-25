@@ -2,6 +2,4 @@ database:
   dev:
     host: 110.42.101.86
     port: 3306
-    username: root
-    password: asd1234567@
     dbname: zht_cloud_db

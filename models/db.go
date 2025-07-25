@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/spf13/viper"
@@ -31,8 +32,8 @@ func DatabaseSetup() {
 		}
 	}
 
-	username := config.GetString("database.dev.username")
-	password := config.GetString("database.dev.password")
+	username := os.Getenv("DB_USERNAME")
+	password := os.Getenv("DB_PASSWORD")
 	host := config.GetString("database.dev.host")
 	port := config.GetString("database.dev.port")
 	dbname := config.GetString("database.dev.dbname")
