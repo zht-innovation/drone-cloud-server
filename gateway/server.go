@@ -14,6 +14,7 @@ func ServerSetup() {
 	http.HandleFunc("/auth", mw.CORSMiddleWare(authDrone))
 
 	http.HandleFunc("/emqx/login", mw.CORSMiddleWare(emqx.AdminLogin))
+	http.HandleFunc("/emqx/topics", mw.CORSMiddleWare(emqx.GetTopicsList))
 
 	err := http.ListenAndServe("0.0.0.0:32223", nil)
 	if err != nil {

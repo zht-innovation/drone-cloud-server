@@ -101,7 +101,7 @@ func AdminLogin(w http.ResponseWriter, r *http.Request) {
 		rs.Msg = rsp.CodeToMsgMap[rsp.SUCCESS]
 		iData := interface{}(
 			map[string]string{
-				"admin_token": adminToken,
+				"adminToken": adminToken,
 			},
 		)
 		rs.Data = &iData
