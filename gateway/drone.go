@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	S "zhtcloud/gateway/shared"
 	"zhtcloud/utils"
 	"zhtcloud/utils/logger"
 
@@ -13,8 +14,8 @@ import (
 )
 
 func droneDataHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithCancel(ctx)
-	conn, err := Upgrader.Upgrade(w, r, nil)
+	ctx, cancel := context.WithCancel(S.Ctx)
+	conn, err := S.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Error("Websocket conn build error: %v", err)
 	}
@@ -28,7 +29,7 @@ func droneDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// listen coordinates transfer
 	go func() {
-		if err := redisClient.SubChannel(ctx, COORS, msgChan); err != nil {
+		if err := redisClient.SubChannel(ctx, S.COORS, msgChan); err != nil {
 			logger.Error("Error subscribing to 'coords' channel: %v", err)
 		}
 	}()
@@ -75,9 +76,9 @@ func droneDataHandler(w http.ResponseWriter, r *http.Request) {
 			var chanName string
 
 			switch typ {
-			case DRONE_INFO:
+			case S.DRONE_INFO:
 				chanName = "drone_info"
-			case RUNNING_STATUS:
+			case S.RUNNING_STATUS:
 				chanName = "running_status"
 			}
 

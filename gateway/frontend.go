@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	S "zhtcloud/gateway/shared"
 	"zhtcloud/utils"
 	"zhtcloud/utils/logger"
 
@@ -35,8 +36,8 @@ func runSendRunningStatus(ctx context.Context, c chan string, conn *ws.Conn) {
 }
 
 func frontendTransfer(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithCancel(ctx)
-	conn, err := Upgrader.Upgrade(w, r, nil)
+	ctx, cancel := context.WithCancel(S.Ctx)
+	conn, err := S.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Error("Websocket conn build error: %v", err)
 	}

@@ -39,9 +39,11 @@ func StartTCPListener(addr string) {
 			closeConns := func() {
 				if localConnA != nil {
 					localConnA.Close()
+					connA = nil
 				}
 				if localConnB != nil {
 					localConnB.Close()
+					connB = nil
 				}
 			}
 
@@ -55,8 +57,6 @@ func StartTCPListener(addr string) {
 				io.Copy(localConnA, localConnB)
 			}()
 
-			connA = nil
-			connB = nil
 			continue
 		} else {
 			logger.Warning("Too many connections, closing new one")

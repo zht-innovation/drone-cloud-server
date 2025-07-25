@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	S "zhtcloud/gateway/shared"
 	rsp "zhtcloud/pkg/response"
 	"zhtcloud/utils/logger"
 
@@ -59,6 +60,7 @@ func checkValidDevice(secret string) (string, bool) {
 		return "", false
 	}
 
+	// secretlist format: key|timestamp|mac
 	secretList := strings.Split(string(decryptedData), "|")
 	if secretList[0] != os.Getenv("SECRET") {
 		logger.Error("Invalid secret prefix: %s", secretList[0])
@@ -95,13 +97,13 @@ func validateMacFormat(mac string) bool {
 }
 
 func authDrone(w http.ResponseWriter, r *http.Request) {
-	rs := Result{}
+	rs := S.Result{}
 
-	defer HandleResBodyEncode(w, &rs)
+	defer S.HandleResBodyEncode(w, &rs)
 
 	if r.Method == http.MethodPost {
 		var req authReq
-		if needReturn := HandleReqBodyDecode(r.Body, &req, &rs); needReturn {
+		if needReturn := S.HandleReqBodyDecode(r.Body, &req, &rs); needReturn {
 			return
 		}
 
@@ -139,6 +141,6 @@ func authDrone(w http.ResponseWriter, r *http.Request) {
 
 		rs.Data = &iData
 	} else {
-		HandleErrorReqMethod(&rs)
+		S.HandleErrorReqMethod(&rs)
 	}
 }
